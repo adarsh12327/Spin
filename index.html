@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Spin & Win!</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+            --primary-color: #ff007f;
+            --secondary-color: #ff3c9a;
+            --accent-color: #00ffff;
+            --coin-color: #ffd700; /* Gold for coins */
+            --glow-color-primary: rgba(255, 0, 127, 0.8);
+            --glow-color-accent: rgba(0, 255, 255, 0.7);
+            --glow-color-coin: rgba(255, 215, 0, 0.7);
+            --text-color: #ffffff;
+            --bg-gradient-start: #1a001a;
+            --bg-gradient-end: #4d004d;
+            --wallet-bg: rgba(0,0,0,0.3);
+            --wallet-border: var(--accent-color);
+            --task-bg: rgba(255,255,255,0.05);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            min-height: 100vh;
+            padding: 15px; /* Reduced padding slightly */
+            overflow-x: hidden;
+            text-align: center;
+        }
+
+        .page-container { max-width: 500px; width: 100%; }
+        .main-page-content, .coin-collect-page-content {
+             background: rgba(0, 0, 0, 0.3);
+             padding: 15px; /* Reduced padding */
+             border-radius: 15px;
+             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+             margin-bottom: 15px; 
+        }
+
+
+        h1, h2 {
+            color: var(--text-color);
+            text-shadow: 0 0 10px var(--glow-color-primary), 0 0 20px var(--glow-color-primary);
+        }
+        h1 { font-size: 1.6em; margin-bottom: 10px; } /* Adjusted */
+        h2 { font-size: 1.4em; margin-bottom: 10px; color: var(--coin-color); text-shadow: 0 0 8px var(--glow-color-coin);} /* Adjusted */
+
+
+        .wheel-container { position: relative; width: 240px; height: 240px; margin: 10px auto; } /* Adjusted */
+        #spinWheelImage { width: 100%; height: 100%; transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 1; }
+        #centerButtonImage { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; z-index: 2; pointer-events: none; } /* Adjusted */
+        .pointer { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 30px; height: 40px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 125"><polygon points="50,0 0,50 100,50" style="fill:%2300ffff;"/></svg>'); background-size: contain; background-repeat: no-repeat; z-index: 10; } /* Adjusted */
+        
+        .button, .wallet-button, .task-button, .nav-button {
+            background: linear-gradient(145deg, var(--primary-color), var(--secondary-color));
+            color: var(--text-color); border: none; padding: 8px 18px; font-size: 0.95em; font-weight: 600; /* Adjusted */
+            border-radius: 50px; cursor: pointer; margin-top: 8px; transition: all 0.3s ease; /* Adjusted */
+            box-shadow: 0 0 10px var(--glow-color-primary), 0 0 3px var(--glow-color-primary) inset; /* Adjusted */
+            position: relative; overflow: hidden; display: inline-block; width: auto; min-width: 140px; /* Adjusted */
+        }
+        #spinButton { padding: 10px 22px; font-size: 1.05em; margin-top: 12px; } /* Adjusted */
+
+        .button:hover, .wallet-button:hover, .task-button:hover, .nav-button:hover { transform: translateY(-2px); box-shadow: 0 0 18px var(--glow-color-primary), 0 0 7px var(--glow-color-primary) inset; } /* Adjusted */
+        .button:active, .wallet-button:active, .task-button:active, .nav-button:active { transform: translateY(1px); box-shadow: 0 0 7px var(--glow-color-primary), 0 0 2px var(--glow-color-primary) inset; } /* Adjusted */
+        .button:disabled, .wallet-button:disabled, .task-button:disabled, .nav-button:disabled { background: #555; cursor: not-allowed; box-shadow: none; opacity: 0.7;}
+
+        .glowing-outline { animation: glowing 1.8s infinite; } /* Adjusted */
+        @keyframes glowing { 0% { box-shadow: 0 0 4px var(--glow-color-accent), 0 0 4px var(--glow-color-accent) inset; } 50% { box-shadow: 0 0 18px var(--glow-color-accent), 0 0 8px var(--glow-color-accent) inset; } 100% { box-shadow: 0 0 4px var(--glow-color-accent), 0 0 4px var(--glow-color-accent) inset; }} /* Adjusted */
+        
+        .message { margin-top: 10px; font-size: 1em; font-weight: 600; padding: 7px; border-radius: 6px; } /* Adjusted */
+        .win-message { color: var(--accent-color); text-shadow: 0 0 7px var(--glow-color-accent); } /* Adjusted */
+
+        .form-container, .invite-container, .referee-reward-container { margin-top: 10px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; } /* Adjusted */
+        .form-container input, .invite-container input, .referee-reward-container input { width: calc(100% - 18px); padding: 7px; margin-bottom: 7px; border-radius: 4px; border: 1px solid var(--accent-color); background: rgba(0,0,0,0.3); color: var(--text-color); text-align: center; } /* Adjusted */
+        .form-container input::placeholder { color: #ccc; }
+
+        .hidden { display: none !important; }
+
+        .info-display { margin-top: 8px; padding: 7px; background: var(--wallet-bg); border-radius: 6px; font-size: 0.95em; font-weight: 600; border: 1px solid var(--wallet-border); } /* Adjusted */
+        .info-display span { color: var(--accent-color); font-weight: 700; }
+        .coin-balance-display { border-color: var(--coin-color); }
+        .coin-balance-display span { color: var(--coin-color); }
+        
+        .wallet-section { margin-top: 8px; padding: 8px; background: var(--wallet-bg); border: 1px solid var(--wallet-border); border-radius: 6px; } /* Adjusted */
+        .wallet-balance { font-size: 1em; font-weight: 600; margin-bottom: 6px; } /* Adjusted */
+        .wallet-balance span { color: var(--accent-color); font-size: 1.1em; } /* Adjusted */
+        .wallet-message { font-size: 0.85em; color: #eee; margin-bottom: 5px; } /* Adjusted */
+        .wallet-button { background: linear-gradient(145deg, var(--accent-color), #00bdbd); box-shadow: 0 0 12px var(--glow-color-accent), 0 0 4px var(--glow-color-accent) inset; font-size: 0.95em; padding: 8px 18px; } /* Adjusted */
+        .wallet-button:hover { box-shadow: 0 0 20px var(--glow-color-accent), 0 0 8px var(--glow-color-accent) inset; }
+
+        .nav-button-container { margin-top: 15px; margin-bottom: 8px; } /* Adjusted */
+        .nav-button.coin-collect { background: linear-gradient(145deg, var(--coin-color), #ffb700); box-shadow: 0 0 10px var(--glow-color-coin), 0 0 3px var(--glow-color-coin) inset; } /* Adjusted */
+        .nav-button.coin-collect:hover { box-shadow: 0 0 18px var(--glow-color-coin), 0 0 7px var(--glow-color-coin) inset; }
+
+
+        .task-list { margin-top: 12px; } /* Adjusted */
+        .task-item { background: var(--task-bg); padding: 8px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.2); } /* Adjusted */
+        .task-item p { margin-bottom: 6px; font-size: 0.9em; } /* Adjusted */
+        .task-item .social-logo { font-weight: bold; margin-right: 5px; color: var(--coin-color); } /* For text "logos" */
+        .task-button { font-size: 0.85em; padding: 7px 14px; min-width: 170px; } /* Adjusted */
+        .task-button.verifying { background: linear-gradient(145deg, #ffa500, #ff8c00); } 
+        .task-button.claimed { background: #4CAF50; opacity: 0.8; } 
+
+        .small-text { font-size: 0.75em; margin-top: 6px; color: #ddd; } /* Adjusted */
+
+        @media (max-width: 380px) { /* More aggressive scaling for very small screens */
+            h1 { font-size: 1.4em; } h2 { font-size: 1.2em; }
+            .wheel-container { width: 200px; height: 200px; } #centerButtonImage { width: 50px; height: 50px; }
+            .button, .wallet-button, .task-button, .nav-button { font-size: 0.8em; padding: 6px 12px; min-width: 120px; }
+            #spinButton { font-size: 0.9em; padding: 8px 18px; }
+            .info-display, .wallet-balance { font-size: 0.85em; } .wallet-balance span { font-size: 1em; }
+            .task-item p { font-size: 0.85em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div id="mainPage" class="main-page-content">
+            <h1>Spin & Win!</h1>
+            <div class="wheel-container">
+                <div class="pointer"></div>
+                <img id="spinWheelImage" src="spin.png" alt="Spin Wheel">
+                <img id="centerButtonImage" src="button.png" alt="Center Button Static">
+            </div>
+            <div id="spinsInfoDisplay" class="info-display">
+                Spins Left: <span id="spinsLeftDisplay">3</span> (Free: <span id="freeSpinsDisplay">3</span>, Reward: <span id="rewardSpinsDisplay">0</span>)
+            </div>
+            <div id="walletSection" class="wallet-section">
+                <div class="wallet-balance">Balance: <span id="walletBalanceDisplay">₹0.00</span></div>
+                <div id="walletMessageDisplay" class="wallet-message">Only ₹500.00 left for withdrawal.</div>
+                <button id="withdrawButton" class="wallet-button hidden">Withdraw ₹500</button>
+            </div>
+            <button id="spinButton" class="button glowing-outline">SPIN NOW</button>
+            <div class="nav-button-container">
+                <button id="goToCoinPageButton" class="nav-button coin-collect">Collect Coins 🪙</button>
+            </div>
+            <div id="messageArea" class="message hidden"></div>
+            <div id="inviteSection" class="invite-container hidden">
+                <p>Out of spins! Invite friends or collect coins.</p>
+                <button id="inviteButton" class="button">Invite Friends</button>
+                <div id="inviteLinkArea" class="hidden" style="margin-top:8px;">
+                    <p style="font-size:0.9em;">Share this link:</p> <input type="text" id="inviteLinkInput" readonly>
+                    <button id="copyInviteLinkButton" class="button" style="font-size:0.75em; padding: 6px 10px; margin-top:4px;">Copy</button>
+                </div>
+            </div>
+            <div id="refereeRewardLinkSection" class="referee-reward-container hidden">
+                 <p style="font-size:0.9em;">Share reward link with inviter:</p>
+                <input type="text" id="rewardClaimLinkForInviterInput" readonly>
+                <button id="shareRewardLinkWithInviterButton" class="button" style="font-size:0.75em; padding: 6px 10px; margin-top:4px;">Share</button>
+            </div>
+            <button id="shareToTelegramButton" class="button hidden" style="background: #0088cc;">Share Win on Telegram</button>
+            <div id="claimFormArea" class="form-container hidden">
+                <h3>Claim Your Prize!</h3>
+                <input type="text" id="nameInput" placeholder="Your Name">
+                <input type="text" id="telegramIdInput" placeholder="Telegram User ID" readonly>
+                <button id="submitClaimButton" class="button">Submit Claim</button>
+            </div>
+        </div>
+
+        <div id="coinCollectPage" class="coin-collect-page-content hidden">
+            <h2>Coin Center</h2>
+            <div id="coinBalanceDisplay" class="info-display coin-balance-display">
+                Your Coins: <span id="coinsDisplay">0</span> 🪙
+            </div>
+            <div class="task-list">
+                <div class="task-item">
+                    <p>Daily Bonus: Claim 100 Coins!</p>
+                    <button id="dailyBonusButton" class="task-button">Claim 100 Coins</button>
+                </div>
+                <div class="task-item">
+                    <p>Exchange 1000 Coins for 1 Spin.</p>
+                    <button id="exchangeCoinsForSpinButton" class="task-button">Get 1 Spin (1000 Coins)</button>
+                </div>
+                <h3>Social Tasks (Get 500 Coins Each)</h3>
+                <p class="small-text" style="color:yellow;">Note: Click "Follow", wait 30 mins, then "Claim Coins".</p>
+                <div class="task-item">
+                    <p><span class="social-logo">[IG]</span> Follow us on Instagram!</p>
+                    <button id="followInstagramButton" data-task="instagram" class="task-button social-task-button">Follow & Get 500 Coins</button>
+                </div>
+                <div class="task-item">
+                    <p><span class="social-logo">[TG]</span> Join our Telegram Channel!</p>
+                    <button id="followTelegramButton" data-task="telegram" class="task-button social-task-button">Join & Get 500 Coins</button>
+                </div>
+                <div class="task-item">
+                    <p><span class="social-logo">[YT]</span> Subscribe to YouTube!</p>
+                    <button id="followYoutubeButton" data-task="youtube" class="task-button social-task-button">Subscribe & Get 500 Coins</button>
+                </div>
+                <div class="task-item">
+                    <p><span class="social-logo">[FB]</span> Like our Facebook Page!</p>
+                    <button id="followFacebookButton" data-task="facebook" class="task-button social-task-button">Like & Get 500 Coins</button>
+                </div>
+            </div>
+            <div class="nav-button-container">
+                <button id="goToMainPageButton" class="nav-button">Back to Spin Wheel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const prizes = [ 
+            { name: '₹100', value: 100 }, { name: '₹50', value: 50 }, { name: '₹10', value: 10 },
+            { name: '₹80', value: 80 }, { name: '₹30', value: 30 }, { name: '₹200', value: 200 },
+            { name: '₹20', value: 20 }, { name: '₹0.9', value: 0.9 }
+        ];
+        if (prizes.length === 0) prizes.push({name: 'Try Again', value: 0}); 
+
+        const NUM_SEGMENTS = prizes.length;
+        const SEGMENT_ANGLE = 360 / NUM_SEGMENTS;
+        const WITHDRAWAL_THRESHOLD = 500;
+        const MIN_SPINS_FOR_WITHDRAWAL = 50; // New condition
+        const COINS_FOR_SPIN_COST = 1000;
+        const DAILY_BONUS_COINS = 100;
+        const SOCIAL_TASK_COINS = 500;
+        const SOCIAL_TASK_VERIFY_DELAY_MS = 30 * 60 * 1000; 
+        // const SOCIAL_TASK_VERIFY_DELAY_MS = 15 * 1000; // 15 seconds for testing
+
+        const socialLinks = { // YOUR ACTUAL URLS
+            instagram: "https://www.instagram.com/its_showtime_10k?igsh=MXdtZ3E3aHAzeXE0NA==",
+            telegram: "https://t.me/ShowtimeMoviesdownloader",
+            youtube: "https://youtube.com/@its_showtime_10k?si=_wzpzJwzqDx5u8Bp",
+            facebook: "https://www.facebook.com/profile.php?id=61564862425826&mibextid=ZbWKwL"
+        };
+        
+        const mainPage = document.getElementById('mainPage');
+        const coinCollectPage = document.getElementById('coinCollectPage');
+        const goToCoinPageButton = document.getElementById('goToCoinPageButton');
+        const goToMainPageButton = document.getElementById('goToMainPageButton');
+        const spinWheelImage = document.getElementById('spinWheelImage');
+        const spinButton = document.getElementById('spinButton');
+        const messageArea = document.getElementById('messageArea');
+        const shareToTelegramButton = document.getElementById('shareToTelegramButton');
+        const claimFormArea = document.getElementById('claimFormArea');
+        const nameInput = document.getElementById('nameInput');
+        const telegramIdInput = document.getElementById('telegramIdInput');
+        const spinsLeftDisplay = document.getElementById('spinsLeftDisplay');
+        const freeSpinsDisplay = document.getElementById('freeSpinsDisplay');
+        const rewardSpinsDisplay = document.getElementById('rewardSpinsDisplay');
+        const inviteSection = document.getElementById('inviteSection');
+        const inviteButton = document.getElementById('inviteButton');
+        const inviteLinkArea = document.getElementById('inviteLinkArea');
+        const inviteLinkInput = document.getElementById('inviteLinkInput');
+        const copyInviteLinkButton = document.getElementById('copyInviteLinkButton');
+        const refereeRewardLinkSection = document.getElementById('refereeRewardLinkSection');
+        const rewardClaimLinkForInviterInput = document.getElementById('rewardClaimLinkForInviterInput');
+        const shareRewardLinkWithInviterButton = document.getElementById('shareRewardLinkWithInviterButton');
+        const walletBalanceDisplay = document.getElementById('walletBalanceDisplay');
+        const walletMessageDisplay = document.getElementById('walletMessageDisplay');
+        const withdrawButton = document.getElementById('withdrawButton');
+        const coinsDisplay = document.getElementById('coinsDisplay');
+        const dailyBonusButton = document.getElementById('dailyBonusButton');
+        const exchangeCoinsForSpinButton = document.getElementById('exchangeCoinsForSpinButton');
+        const socialTaskButtons = document.querySelectorAll('.social-task-button');
+
+        let isSpinning = false;
+        let currentRotation = 0;
+        let wonPrizeData = null;
+        let userData = {
+            userId: null, userName: null, freeSpins: 3, rewardSpins: 0, totalSpinsMadeBySelf: 0,
+            referredBy: null, generatedCompletionIdForMyReferrer: null, claimedReferralRewards: [],
+            walletBalance: 0, coins: 0, lastDailyBonusClaimTime: 0,
+            socialTasks: {
+                instagram: { claimed: false, claimAvailableAt: null }, telegram: { claimed: false, claimAvailableAt: null },
+                youtube: { claimed: false, claimAvailableAt: null }, facebook: { claimed: false, claimAvailableAt: null }
+            }
+        };
+        let socialTaskIntervalId = null;
+                function initApp() {
+            loadUserData();
+            const urlParams = new URLSearchParams(window.location.search);
+            const refParam = urlParams.get('ref');
+            const claimRewardParam = urlParams.get('claim_reward');
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                try {
+                    window.Telegram.WebApp.ready();
+                    const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+                    if (tgUser) {
+                        if (!userData.userId) userData.userId = String(tgUser.id);
+                        userData.userName = tgUser.first_name || tgUser.username || '';
+                        telegramIdInput.value = userData.userId + (userData.userName ? ` (${userData.userName})` : '');
+                    }
+                    const startParam = window.Telegram.WebApp.initDataUnsafe.start_param;
+                    if (startParam) {
+                        if (startParam.startsWith('ref_')) {
+                             const inviterId = startParam.substring(4);
+                             if (!userData.referredBy && userData.userId !== inviterId) userData.referredBy = inviterId;
+                        } else if (startParam.startsWith('claim_')) processRewardClaim(startParam);
+                    }
+                } catch (e) { console.error("TG SDK error:", e); }
+            }
+            
+            if (!userData.userId) userData.userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            if (refParam && !userData.referredBy && userData.userId !== refParam) userData.referredBy = refParam;
+            if (claimRewardParam) processRewardClaim(claimRewardParam);
+
+            updateAllDisplays(); checkSpinAvailability(); setupEventListeners(); saveUserData();
+
+            if (refParam || claimRewardParam || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe.start_param)) {
+                const cleanURL = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
+                window.history.replaceState({ path: cleanURL }, '', cleanURL);
+            }
+        }
+
+        function setupEventListeners() {
+            spinButton.addEventListener('click', handleSpin);
+            spinWheelImage.addEventListener('transitionend', handleSpinEnd);
+            shareToTelegramButton.addEventListener('click', handleShareWin);
+            document.getElementById('submitClaimButton').addEventListener('click', handleSubmitClaim);
+            inviteButton.addEventListener('click', handleInvite);
+            copyInviteLinkButton.addEventListener('click', handleCopyLink);
+            shareRewardLinkWithInviterButton.addEventListener('click', handleShareRewardLink);
+            withdrawButton.addEventListener('click', handleWithdraw);
+            goToCoinPageButton.addEventListener('click', () => switchPage('coinCollectPage'));
+            goToMainPageButton.addEventListener('click', () => switchPage('mainPage'));
+            dailyBonusButton.addEventListener('click', handleDailyBonus);
+            exchangeCoinsForSpinButton.addEventListener('click', handleExchangeCoinsForSpin);
+            socialTaskButtons.forEach(button => button.addEventListener('click', handleSocialTaskClick));
+        }
+        
+        function switchPage(pageIdToShow) {
+            mainPage.classList.add('hidden'); coinCollectPage.classList.add('hidden');
+            document.getElementById(pageIdToShow).classList.remove('hidden');
+            if (pageIdToShow === 'coinCollectPage') {
+                updateCoinPageDisplays(); 
+                if (!socialTaskIntervalId) socialTaskIntervalId = setInterval(updateSocialTaskButtonTimers, 1000);
+            } else if (socialTaskIntervalId) { clearInterval(socialTaskIntervalId); socialTaskIntervalId = null; }
+        }
+
+        function loadUserData() {
+            const storedData = localStorage.getItem('spinWheelUserData_v5'); // Version up
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                const defaultSocialTasks = userData.socialTasks;
+                userData = { ...userData, ...parsedData }; 
+                userData.socialTasks = { ...defaultSocialTasks, ...(parsedData.socialTasks || {}) };
+                Object.keys(defaultSocialTasks).forEach(key => { // Ensure all social tasks exist
+                    if (!userData.socialTasks[key]) userData.socialTasks[key] = defaultSocialTasks[key];
+                });
+                userData.freeSpins = userData.freeSpins !== undefined ? userData.freeSpins : 3;
+                userData.rewardSpins = userData.rewardSpins || 0;
+                userData.totalSpinsMadeBySelf = userData.totalSpinsMadeBySelf || 0;
+                userData.claimedReferralRewards = userData.claimedReferralRewards || [];
+                userData.walletBalance = userData.walletBalance || 0;
+                userData.coins = userData.coins || 0;
+                userData.lastDailyBonusClaimTime = userData.lastDailyBonusClaimTime || 0;
+            }
+        }
+        function saveUserData() { localStorage.setItem('spinWheelUserData_v5', JSON.stringify(userData)); }
+
+        function updateAllDisplays() {
+            updateSpinsDisplay(); updateWalletDisplay(); updateCoinPageDisplays();
+        }
+        function updateSpinsDisplay() {
+            const totalSpins = userData.freeSpins + userData.rewardSpins;
+            spinsLeftDisplay.textContent = totalSpins;
+            freeSpinsDisplay.textContent = userData.freeSpins;
+            rewardSpinsDisplay.textContent = userData.rewardSpins;
+        }
+        function updateWalletDisplay() {
+            walletBalanceDisplay.textContent = `₹${userData.walletBalance.toFixed(2)}`;
+            if (userData.walletBalance >= WITHDRAWAL_THRESHOLD && userData.totalSpinsMadeBySelf >= MIN_SPINS_FOR_WITHDRAWAL) {
+                walletMessageDisplay.textContent = "You can withdraw now!";
+                walletMessageDisplay.classList.remove('hidden');
+                withdrawButton.classList.remove('hidden');
+                withdrawButton.textContent = `Withdraw ₹${WITHDRAWAL_THRESHOLD}`;
+            } else if (userData.walletBalance >= WITHDRAWAL_THRESHOLD && userData.totalSpinsMadeBySelf < MIN_SPINS_FOR_WITHDRAWAL) {
+                const spinsNeeded = MIN_SPINS_FOR_WITHDRAWAL - userData.totalSpinsMadeBySelf;
+                walletMessageDisplay.textContent = `Balance is ₹${userData.walletBalance.toFixed(2)}. Need ${spinsNeeded} more spin(s) to withdraw.`;
+                walletMessageDisplay.classList.remove('hidden');
+                withdrawButton.classList.add('hidden');
+            }
+            else {
+                const amountNeeded = WITHDRAWAL_THRESHOLD - userData.walletBalance;
+                walletMessageDisplay.textContent = `Only ₹${amountNeeded.toFixed(2)} left for withdrawal. (Min ${MIN_SPINS_FOR_WITHDRAWAL} spins also required)`;
+                walletMessageDisplay.classList.remove('hidden');
+                withdrawButton.classList.add('hidden');
+            }
+        }
+
+        function updateCoinPageDisplays() {
+            coinsDisplay.textContent = userData.coins;
+            const now = Date.now();
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+            if (now - userData.lastDailyBonusClaimTime >= twentyFourHours) {
+                dailyBonusButton.textContent = `Claim ${DAILY_BONUS_COINS} Coins`; dailyBonusButton.disabled = false;
+            } else {
+                const timeLeft = twentyFourHours - (now - userData.lastDailyBonusClaimTime);
+                dailyBonusButton.textContent = `Claim in ${formatTimeLeft(timeLeft)}`; dailyBonusButton.disabled = true;
+            }
+            exchangeCoinsForSpinButton.disabled = userData.coins < COINS_FOR_SPIN_COST;
+            updateSocialTaskButtonTimers(); 
+        }
+        function formatTimeLeft(ms) {
+            let s = Math.floor((ms / 1000) % 60), m = Math.floor((ms / (1000 * 60)) % 60), h = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        function updateSocialTaskButtonTimers() {
+            socialTaskButtons.forEach(button => {
+                const taskName = button.dataset.task;
+                const task = userData.socialTasks[taskName];
+                button.classList.remove('verifying', 'claimed'); // Reset classes
+                if (task.claimed) {
+                    button.textContent = "Claimed"; button.disabled = true; button.classList.add('claimed');
+                } else if (task.claimAvailableAt) {
+                    const now = Date.now();
+                    if (now >= task.claimAvailableAt) {
+                        button.textContent = `Claim ${SOCIAL_TASK_COINS} Coins`; button.disabled = false;
+                    } else {
+                        button.textContent = `Claim in ${formatTimeLeft(task.claimAvailableAt - now)}`; button.disabled = true; button.classList.add('verifying');
+                    }
+                } else {
+                    button.textContent = `Follow & Get ${SOCIAL_TASK_COINS} Coins`; button.disabled = false;
+                }
+            });
+        }
+
+        function checkSpinAvailability() {
+            const totalSpins = userData.freeSpins + userData.rewardSpins;
+            spinButton.disabled = totalSpins <= 0;
+            spinButton.classList.toggle('glowing-outline', totalSpins > 0);
+            inviteSection.classList.toggle('hidden', totalSpins > 0);
+            if (userData.generatedCompletionIdForMyReferrer && totalSpins <=0) showRefereeRewardLinkSection();
+            else if(!userData.generatedCompletionIdForMyReferrer) refereeRewardLinkSection.classList.add('hidden');
+        }
+        
+        function handleSpin() {
+            if (isSpinning || NUM_SEGMENTS === 0) return;
+            if (userData.freeSpins > 0) userData.freeSpins--;
+            else if (userData.rewardSpins > 0) userData.rewardSpins--;
+            else { checkSpinAvailability(); return; }
+
+            isSpinning = true; spinButton.disabled = true; spinButton.classList.remove('glowing-outline');
+            messageArea.classList.add('hidden'); shareToTelegramButton.classList.add('hidden');
+            claimFormArea.classList.add('hidden'); refereeRewardLinkSection.classList.add('hidden');
+
+            const prizeIndex = Math.floor(Math.random() * NUM_SEGMENTS);
+            wonPrizeData = prizes[prizeIndex];
+                        const fullRotations = 5 + Math.floor(Math.random() * 5);
+            const targetAngle = (prizeIndex * SEGMENT_ANGLE) + (SEGMENT_ANGLE / 2);
+            currentRotation = (fullRotations * 360) - targetAngle;
+            spinWheelImage.style.transition = 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            spinWheelImage.style.transform = `rotate(${currentRotation}deg)`;
+            userData.totalSpinsMadeBySelf++;
+            saveUserData(); updateSpinsDisplay();
+        }
+        function handleSpinEnd() {
+            if (!isSpinning || !wonPrizeData) return; 
+            isSpinning = false;
+            userData.walletBalance += wonPrizeData.value; updateWalletDisplay();
+            messageArea.textContent = `Congratulations! You won ${wonPrizeData.name}`;
+            messageArea.className = 'message win-message'; messageArea.classList.remove('hidden');
+            if (typeof confetti === 'function') confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } }); // Slightly less confetti
+            shareToTelegramButton.classList.remove('hidden');
+            if (userData.totalSpinsMadeBySelf === 3 && userData.referredBy && !userData.generatedCompletionIdForMyReferrer) {
+                const cId = `claim_${userData.referredBy}_${userData.userId}_${Date.now().toString(36).slice(-6)}`;
+                userData.generatedCompletionIdForMyReferrer = cId; showRefereeRewardLinkSection(cId);
+            }
+            checkSpinAvailability(); saveUserData();
+        }
+        
+        function handleWithdraw() {
+            if (userData.walletBalance >= WITHDRAWAL_THRESHOLD && userData.totalSpinsMadeBySelf >= MIN_SPINS_FOR_WITHDRAWAL) {
+                userData.walletBalance -= WITHDRAWAL_THRESHOLD;
+                saveUserData(); updateWalletDisplay();
+                alert(`Withdrawal of ₹${WITHDRAWAL_THRESHOLD} successful (simulated)!`);
+            }
+        }
+        function handleDailyBonus() {
+            const now = Date.now();
+            if (now - userData.lastDailyBonusClaimTime >= 24*60*60*1000) {
+                userData.coins += DAILY_BONUS_COINS; userData.lastDailyBonusClaimTime = now;
+                alert(`Collected ${DAILY_BONUS_COINS} coins!`); saveUserData(); updateCoinPageDisplays();
+            } else alert("Daily bonus not yet available.");
+        }
+        function handleExchangeCoinsForSpin() {
+            if (userData.coins >= COINS_FOR_SPIN_COST) {
+                userData.coins -= COINS_FOR_SPIN_COST; userData.rewardSpins++;
+                alert(`Exchanged ${COINS_FOR_SPIN_COST} coins for 1 spin!`);
+                saveUserData(); updateAllDisplays(); checkSpinAvailability();
+            } else alert("Not enough coins.");
+        }
+        function handleSocialTaskClick(event) {
+            const btn = event.target, taskName = btn.dataset.task, task = userData.socialTasks[taskName];
+            if (task.claimed) return;
+            if (task.claimAvailableAt && Date.now() >= task.claimAvailableAt) {
+                userData.coins += SOCIAL_TASK_COINS; task.claimed = true; task.claimAvailableAt = null;
+                alert(`Claimed ${SOCIAL_TASK_COINS} coins for ${taskName} task!`);
+            } else if (!task.claimAvailableAt) {
+                window.open(socialLinks[taskName], '_blank');
+                task.claimAvailableAt = Date.now() + SOCIAL_TASK_VERIFY_DELAY_MS;
+                alert(`Follow/subscribe on ${taskName}. Return in 30 mins to claim coins.`);
+            }
+            saveUserData(); updateSocialTaskButtonTimers();
+        }
+
+        function showRefereeRewardLinkSection(cIdOverride = null) {
+            const cIdShow = cIdOverride || userData.generatedCompletionIdForMyReferrer; if (!cIdShow) return;
+            rewardClaimLinkForInviterInput.value = `${location.protocol}//${location.host}${location.pathname}?${cIdShow}`;
+            refereeRewardLinkSection.classList.remove('hidden');
+        }
+        function handleShareWin() {
+            if (!wonPrizeData) return;
+            const txt = `I won ${wonPrizeData.name}! Wallet: ₹${userData.walletBalance.toFixed(2)}. Try now:`;
+            const pUrl = `${location.protocol}//${location.host}${location.pathname}`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(pUrl)}&text=${encodeURIComponent(txt)}`, '_blank');
+            shareToTelegramButton.classList.add('hidden');
+            setTimeout(() => {
+                claimFormArea.classList.remove('hidden');
+                if (userData.userName) nameInput.value = userData.userName;
+                if (userData.userId) telegramIdInput.value = userData.userId + (userData.userName ? ` (${userData.userName})` : '');
+            }, 1200); 
+        }
+        function handleSubmitClaim() {
+            const name = nameInput.value.trim(); if (!name) { alert("Enter name."); return; }
+            if (!wonPrizeData) { alert("No prize to claim."); return; }
+            console.log(`Claim: ${name}, TG: ${telegramIdInput.value}, Prize: ${wonPrizeData.name}`);
+            messageArea.textContent = `Claim for ${wonPrizeData.name} submitted! (Simulated)`;
+            messageArea.className = 'message'; messageArea.classList.remove('hidden');
+            claimFormArea.classList.add('hidden'); wonPrizeData = null;
+        }
+        function handleInvite() {
+            inviteLinkInput.value = `${location.protocol}//${location.host}${location.pathname}?ref=${userData.userId}`;
+            inviteLinkArea.classList.remove('hidden');
+        }
+        function handleCopyLink() {
+            inviteLinkInput.select(); inviteLinkInput.setSelectionRange(0, 99999);
+            try { document.execCommand('copy'); alert('Invite link copied!'); } 
+            catch (err) { alert('Failed to copy.'); }
+        }
+        function handleShareRewardLink() {
+            const rLink = rewardClaimLinkForInviterInput.value; if (!rLink) return;
+            const txt = `I completed spins! Claim reward:`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(rLink)}&text=${encodeURIComponent(txt)}`, '_blank');
+        }
+        function processRewardClaim(claimId) {
+            if (!claimId || !claimId.startsWith("claim_")) return;
+            const parts = claimId.split('_'); if (parts.length < 4) return;
+            if (parts[1] !== userData.userId) { alert("Reward link not for you."); return; }
+            if (userData.claimedReferralRewards.includes(claimId)) { alert("Reward already claimed."); return; }
+            userData.rewardSpins++; userData.claimedReferralRewards.push(claimId);
+            saveUserData(); updateSpinsDisplay(); checkSpinAvailability(); 
+            alert("Referral reward claimed! You got 1 bonus spin.");
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+    <a href="https://www.profitableratecpm.com/s3wf35v3?key=c07647d89daea0fc5c8f7337b0ceb9ca" target="_blank">
+  <button fonts-size=40px> watch now 😜</button>
+</a>
+</body>
+</html>
+<script type="text/javascript">
+	atOptions = {
+		'key' : 'ef5ba613f768909b672305effa5b2efc',
+		'format' : 'iframe',
+		'height' : 50,
+		'width' : 320,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/ef5ba613f768909b672305effa5b2efc/invoke.js"></script>
+
+<script type="text/javascript">
+	atOptions = {
+		'key' : '3ed8fb4fd9675424057d2f34e6dba1f7',
+		'format' : 'iframe',
+		'height' : 60,
+		'width' : 468,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/3ed8fb4fd9675424057d2f34e6dba1f7/invoke.js"></script>
